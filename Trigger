@@ -1,0 +1,37 @@
+DELIMITER //
+
+CREATE TRIGGER p_limitar_unidades_mensuales_de_productos_fisicos
+BEFORE INSERT ON LineasPedido
+FOR EACH ROW
+BEGIN
+    DECLARE v_unidadesMes INT DEFAULT 0;
+    DECLARE v_esFisico BOOLEAN DEFAULT FALSE;
+    
+    /* 1. Comprobamos si el producto es de tipo "Físico" 
+       (Ajustar 'Físico' según los datos reales de la tabla TiposProducto) */
+    SELECT (tp.nombre = 'Físico') INTO v_esFisico
+    FROM Productos p
+    JOIN TiposProducto tp ON p.tipoProductoId = tp.id
+    WHERE p.id = NEW.productoId;
+
+    /* Solo aplicamos la lógica si es un producto físico (o si asumimos todos lo son) */
+    IF v_esFisico THEN
+    
+        /* 2. Calculamos unidades vendidas de este producto en el mes actual */
+        SELECT COALESCE(SUM(lp.unidades), 0) INTO v_unidadesMes
+        FROM LineasPedido lp
+        JOIN Pedidos p ON lp.pedidoId = p.id
+        WHERE lp.productoId = NEW.productoId
+          AND MONTH(p.fechaRealizacion) = MONTH(CURDATE())
+          AND YEAR(p.fechaRealizacion) = YEAR(CURDATE());
+          
+        /* 3. Verificamos si la suma supera el límite */
+        IF (v_unidadesMes + NEW.unidades) > 1000 THEN
+            SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Error: Se superan las 1000 unidades mensuales para este producto físico.';
+        END IF;
+        
+    END IF;
+END //
+
+DELIMITER ;
