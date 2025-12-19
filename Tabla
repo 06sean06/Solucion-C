@@ -1,0 +1,17 @@
+CREATE TABLE Valoraciones (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    clienteId INT NOT NULL,
+    productoId INT NOT NULL,
+    puntuacion INT NOT NULL CHECK (puntuacion BETWEEN 1 AND 5),
+    fecha DATE NOT NULL DEFAULT (CURRENT_DATE),
+    
+    FOREIGN KEY (clienteId) REFERENCES Clientes(id)
+        ON DELETE CASCADE 
+        ON UPDATE CASCADE,
+    FOREIGN KEY (productoId) REFERENCES Productos(id)
+        ON DELETE CASCADE 
+        ON UPDATE CASCADE,
+        
+    /* Restricción: Un cliente no puede valorar más de una vez un mismo producto */
+    UNIQUE (clienteId, productoId)
+);
