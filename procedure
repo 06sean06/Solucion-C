@@ -1,0 +1,44 @@
+DELIMITER //
+
+CREATE PROCEDURE bonificar_pedido_retrasado(
+    IN p_pedidoId INT,
+    IN p_nuevoEmpleadoId INT
+)
+BEGIN
+    DECLARE v_empleadoActual INT;
+    
+    /* Manejador de error para rollback en caso de fallo SQL */
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+
+    /* 1. Verificar si tiene gestor actual (bloqueando la fila para lectura segura) */
+    SELECT empleadoId INTO v_empleadoActual
+    FROM Pedidos
+    WHERE id = p_pedidoId
+    FOR UPDATE;
+
+    /* Si es NULL, lanzamos la excepción personalizada */
+    IF v_empleadoActual IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'El pedido no tiene gestor.';
+    END IF;
+
+    /* 2. Asignar nuevo empleado */
+    UPDATE Pedidos
+    SET empleadoId = p_nuevoEmpleadoId
+    WHERE id = p_pedidoId;
+
+    /* 3. Reducir un 20% el precio unitario de las líneas asociadas */
+    UPDATE LineasPedido
+    SET precio = precio * 0.80
+    WHERE pedidoId = p_pedidoId;
+
+    COMMIT;
+END //
+
+DELIMITER ;
