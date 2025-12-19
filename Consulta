@@ -1,0 +1,23 @@
+/* 2.1. Top 5 líneas de pedido con más unidades */
+SELECT 
+    p.nombre AS NombreProducto, 
+    lp.precio AS PrecioUnitario, 
+    lp.unidades AS UnidadesCompradas
+FROM LineasPedido lp
+JOIN Productos p ON lp.productoId = p.id
+ORDER BY lp.unidades DESC
+LIMIT 5;
+
+/* 2.3. Pedidos antiguos (>7 días) con totales y nombre de empleado */
+SELECT 
+    u.nombre AS NombreEmpleado,
+    pe.fechaRealizacion,
+    SUM(lp.unidades * lp.precio) AS PrecioTotalPedido,
+    SUM(lp.unidades) AS UnidadesTotalesPedido
+FROM Pedidos pe
+/* LEFT JOIN para incluir pedidos sin empleado asignado */
+LEFT JOIN Empleados e ON pe.empleadoId = e.id
+LEFT JOIN Usuarios u ON e.usuarioId = u.id
+JOIN LineasPedido lp ON pe.id = lp.pedidoId
+WHERE DATEDIFF(CURDATE(), pe.fechaRealizacion) > 7
+GROUP BY pe.id, u.nombre, pe.fechaRealizacion;
